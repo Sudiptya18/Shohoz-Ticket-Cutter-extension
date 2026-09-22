@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Shohoz Ticket Cutter</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-mark" aria-hidden="true">
+      <img src="icons/icon48.png" width="36" height="36" alt="" />
+    </div>
+    <div class="hero-text">
+      <h1>Shohoz Ticket Cutter</h1>
+      <p>Same-side seats · one coach</p>
+    </div>
+    <span id="runPill" class="pill idle">Idle</span>
+  </header>
+
+  <main>
+    <section class="card">
+      <div class="pair">
+        <label class="field">
+          <span>From</span>
+          <div class="combo" data-kind="station">
+            <input id="from" type="text" placeholder="Search station" autocomplete="off" spellcheck="false" maxlength="40" />
+            <div class="combo-list" hidden></div>
+          </div>
+        </label>
+        <button type="button" id="swapBtn" class="icon-btn" title="Swap From / To">⇄</button>
+        <label class="field">
+          <span>To</span>
+          <div class="combo" data-kind="station">
+            <input id="to" type="text" placeholder="Search station" autocomplete="off" spellcheck="false" maxlength="40" />
+            <div class="combo-list" hidden></div>
+          </div>
+        </label>
+      </div>
+
+      <div class="grid-2">
+        <label class="field">
+          <span>Date of Journey</span>
+          <input id="date" type="date" />
+        </label>
+        <label class="field">
+          <span>Class</span>
+          <select id="seatClass">
+            <option value="S_CHAIR">S_CHAIR</option>
+            <option value="SHOVAN">SHOVAN</option>
+            <option value="SNIGDHA">SNIGDHA</option>
+            <option value="F_CHAIR">F_CHAIR</option>
+            <option value="F_SEAT">F_SEAT</option>
+            <option value="F_BERTH">F_BERTH</option>
+            <option value="AC_S">AC_S</option>
+            <option value="AC_B">AC_B</option>
+            <option value="SHULOV">SHULOV</option>
+            <option value="AC_CHAIR">AC_CHAIR</option>
+          </select>
+        </label>
+      </div>
+
+      <label class="field">
+        <span>Train <em id="trainHint" class="hint-inline">Select From &amp; To first</em></span>
+        <div class="combo" data-kind="train">
+          <input id="train" type="text" placeholder="Available trains for this route" autocomplete="off" spellcheck="false" maxlength="80" />
+          <div class="combo-list" hidden></div>
+        </div>
+      </label>
+
+      <div class="grid-2">
+        <div class="field">
+          <span>Seats (max 4)</span>
+          <div class="stepper">
+            <button type="button" id="seatMinus" aria-label="Fewer seats">−</button>
+            <strong id="seatCount">2</strong>
+            <button type="button" id="seatPlus" aria-label="More seats">+</button>
+          </div>
+        </div>
+        <label class="field">
+          <span>Preferred coach</span>
+          <input id="coach" type="text" placeholder="Any · e.g. KHA" autocomplete="off" maxlength="20" />
+        </label>
+      </div>
+
+      <label class="check">
+        <input id="preferMiddle" type="checkbox" checked />
+        <span>Prefer middle bogie seats</span>
+      </label>
+      <label class="check">
+        <input id="retry" type="checkbox" checked />
+        <span>Keep retrying until seats appear</span>
+      </label>
+    </section>
+
+    <div class="actions">
+      <button type="button" id="clearBtn" class="btn-clear">Clear</button>
+      <button type="button" id="startBtn" class="btn-start">Start cutter</button>
+      <button type="button" id="stopBtn" class="btn-stop" hidden>Stop</button>
+    </div>
+
+    <section class="card log-card">
+      <div class="log-head">
+        <span>Live status</span>
+        <button type="button" id="clearLog" class="text-btn">Clear</button>
+      </div>
+      <ol id="log" class="log"></ol>
+    </section>
+  </main>
+
+  <footer>
+    <span>Created by <strong>Sudiptya Chanda</strong></span>
+    <span class="hint">Open train.shohoz.com · stay logged in</span>
+  </footer>
+
+  <script src="data/stations.js"></script>
+  <script src="security.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

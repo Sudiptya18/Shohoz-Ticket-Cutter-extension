@@ -1,0 +1,46 @@
+{
+  "manifest_version": 3,
+  "name": "Shohoz Ticket Cutter",
+  "version": "1.1.0",
+  "description": "Select From, To, date, class and train — then cut same-side seats on train.shohoz.com until the OTP page.",
+  "author": "Sudiptya Chanda",
+  "action": {
+    "default_title": "Shohoz Ticket Cutter",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": ["storage", "tabs", "scripting"],
+  "host_permissions": [
+    "https://train.shohoz.com/*",
+    "https://eticket.railway.gov.bd/*",
+    "https://railspaapi.shohoz.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://train.shohoz.com/*",
+        "https://eticket.railway.gov.bd/*"
+      ],
+      "js": ["security.js", "content.js"],
+      "css": ["overlay.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
+}

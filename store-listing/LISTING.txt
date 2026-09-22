@@ -1,0 +1,150 @@
+CHROME WEB STORE — COPY & PASTE
+Shohoz Ticket Cutter  ·  Created by Sudiptya Chanda
+Assets folder: D:\Projects\Other Projects\EXTENSIONS\AutoBot\store-listing
+
+
+════════════════════════════════════════
+STORE LISTING (the screen in your screenshot)
+════════════════════════════════════════
+
+Title from package
+  Shohoz Ticket Cutter
+  (comes from manifest.json — do not duplicate it in Description)
+
+Summary from package  (keep this in manifest.json, max ~132 characters)
+  Select From, To, date, class and train, then cut same-side seats on train.shohoz.com until OTP.
+
+Description *   (paste into the Description box)
+
+Shohoz Ticket Cutter helps you book Bangladesh Railway e-tickets on train.shohoz.com without hunting through the seat map by hand.
+
+Set From, To, Date of Journey, Class, Train and how many seats you need (1–4). Press Start cutter. The extension searches, opens your train, and selects seats that sit together on the same side of the aisle in the same coach. When the OTP page appears, the bot stops so you can enter the code and pay yourself.
+
+WHY INSTALL
+• Adjacent seats for family or friends — not scattered across the aisle or across coaches
+• Middle-of-coach seats when a bogie still has plenty of space
+• If a coach is filling up, it takes any side-by-side block and only uses the last rows as a last resort
+• Optional preferred coach (for example KHA or GHA)
+• Optional retry until seats appear
+• Live status in the popup and on the page
+
+HOW TO USE
+1. Install the extension and pin it.
+2. Log in to https://train.shohoz.com
+3. Open Shohoz Ticket Cutter.
+4. Choose From, To, Date, Class, Train and seat count.
+5. Press Start cutter and keep the tab open.
+6. When OTP appears, the job is done — enter OTP and complete payment.
+
+SEAT RULES
+• 2 seats: a same-row pair such as GHA-33 and GHA-34
+• 4 seats: two consecutive rows on one side, such as 29, 30, 33, 34 or 31, 32, 35, 36
+• Seats always stay in one coach
+• You still confirm purchase and enter OTP yourself
+
+NOTES
+This extension is an independent helper for the official Bangladesh Railway / Shohoz e-ticketing site. It is not affiliated with Shohoz, Bangladesh Railway, or BRITS. You must already have a valid account, stay logged in, and follow the website’s terms. Use it only for your own tickets.
+
+
+Category *
+  Travel
+  (If Travel is not listed, use Productivity)
+
+Language *
+  English (United States)
+  Optional extra locale: Bangla — বাংলা (Bangladesh)  [same description is fine]
+
+
+════════════════════════════════════════
+GRAPHICS  (upload these files)
+════════════════════════════════════════
+
+Store / extension icon   128 × 128 PNG
+  icon-128.png                 (transparent padding — preferred)
+  icon-128-solid.png           (use if the dashboard rejects transparency)
+
+Small promo tile *        440 × 280 PNG   REQUIRED
+  small-promo-440x280.png
+
+Marquee promo tile        1400 × 560 PNG  OPTIONAL (needed if they feature you)
+  marquee-1400x560.png
+
+Screenshots *             1280 × 800 PNG  upload in this order
+  1. screenshot-1-popup-1280x800.png
+  2. screenshot-2-seats-1280x800.png
+  3. screenshot-3-how-it-works-1280x800.png
+  4. screenshot-4-rules-1280x800.png
+
+Promo tiles must be 24-bit PNG, no transparency, no rounded canvas corners.
+Screenshots must be exactly 1280×800 or 640×400, square corners, full bleed.
+
+
+════════════════════════════════════════
+PACKAGE (ZIP) FOR “BUILD > PACKAGE”
+════════════════════════════════════════
+
+Zip the extension ROOT (manifest.json at the top of the zip), not the parent folder.
+
+Include:
+  manifest.json
+  popup.html, popup.css, popup.js
+  content.js, overlay.css, background.js
+  data\stations.js, data\trains.js
+  icons\icon16.png, icon32.png, icon48.png, icon128.png
+
+You may omit the store-listing folder from the zip — those files are only for this dashboard.
+
+
+════════════════════════════════════════
+PRIVACY  (next left-menu item — fill honestly)
+════════════════════════════════════════
+
+Single purpose
+  Helps the user search trains and select adjacent seats on Bangladesh Railway e-ticketing (train.shohoz.com), then stops at the OTP page.
+
+Does this extension collect or use user data?
+  Yes — only on the device.
+
+Data used
+  • Trip preferences you type (From, To, date, class, train, seat count, coach)
+  • Live status logs while the cutter is running
+  Stored with chrome.storage on your computer. Not sent to the developer. Not sold. No analytics.
+
+Remote code
+  No
+
+Host permission justification
+  https://train.shohoz.com/* and https://eticket.railway.gov.bd/*
+  Required to read the booking page and click search, train, seats and Continue Purchase for the user.
+
+tabs / scripting / storage justification
+  tabs — open or focus the Shohoz tab
+  scripting — run the cutter on that tab
+  storage — remember your last trip and status
+
+Privacy policy URL
+  Host privacy-policy.html on GitHub Pages, Google Sites, or your own site, then paste the public URL.
+
+
+════════════════════════════════════════
+TEST INSTRUCTIONS  (for Google reviewers)
+════════════════════════════════════════
+
+1. Install the extension and pin it.
+2. Open https://train.shohoz.com and log in with a normal passenger account.
+3. Click the extension icon.
+4. Set From, To, a journey date within the allowed window, class, train name, and 2 seats.
+5. Click Start cutter.
+6. Confirm it searches, opens the seat map, selects two adjacent seats in one coach, and stops if an OTP page appears.
+7. You may cancel before payment. Do not complete a live purchase during review if you prefer; stopping at OTP is enough.
+
+
+════════════════════════════════════════
+DISTRIBUTION
+════════════════════════════════════════
+
+Visibility: Public
+Countries: All regions  (or at least Bangladesh)
+Pricing: Free
+════════════════════════════════════════
+Created by Sudiptya Chanda

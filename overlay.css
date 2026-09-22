@@ -1,0 +1,58 @@
+#stc-hud {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 2147483646;
+  width: 280px;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  color: #12233a;
+  background: #ffffff;
+  border: 1px solid #d8e4dc;
+  border-radius: 14px;
+  box-shadow: 0 14px 40px rgba(6, 40, 28, 0.22);
+  overflow: hidden;
+}
+
+#stc-hud .stc-h {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, #053d2c, #006747);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+#stc-hud .stc-body {
+  padding: 10px 12px 12px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+#stc-hud .stc-step {
+  margin: 0 0 8px;
+  color: #006747;
+  font-weight: 700;
+}
+
+#stc-hud .stc-msg {
+  margin: 0 0 10px;
+  color: #334155;
+}
+
+#stc-hud button {
+  width: 100%;
+  height: 34px;
+  border: 0;
+  border-radius: 9px;
+  background: #fff1f2;
+  color: #dc3545;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#stc-hud.stc-idle { display: none; }
+#stc-hud.stc-done .stc-step { color: #079d49; }
+#stc-hud.stc-err .stc-step { color: #dc3545; }
