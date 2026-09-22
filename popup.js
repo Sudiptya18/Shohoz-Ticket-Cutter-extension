@@ -65,9 +65,11 @@ function updateTrainHint(state, count) {
   } else if (state === "ok") {
     trainHint.textContent = `${count} train(s) on this route`;
   } else if (state === "empty") {
-    trainHint.textContent = "No trains found — check date/class";
+    trainHint.textContent = "No trains on this date/class";
+  } else if (state === "login") {
+    trainHint.textContent = "Log in on train.shohoz.com first";
   } else {
-    trainHint.textContent = "Could not load trains";
+    trainHint.textContent = "Could not load trains — retry";
   }
 }
 
@@ -101,7 +103,7 @@ function bindCombo(input, kind) {
   }
 
   input.addEventListener("focus", () => {
-    if (kind === "train") refreshRouteTrains();
+    if (kind === "train") refreshRouteTrains(true);
     render(input.value);
   });
   input.addEventListener("input", () => render(input.value));
@@ -260,10 +262,16 @@ async function refreshRouteTrains(force) {
       seatClass: classEl.value
     });
     if (token !== fetchToken) return;
+    if (res?.error === "not_logged_in") {
+      routeTrains = [];
+      routeKey = "";
+      updateTrainHint("login");
+      return;
+    }
     if (!res?.ok) {
       routeTrains = [];
       routeKey = key;
-      updateTrainHint("err");
+      updateTrainHint(res?.error === "no_trains" ? "empty" : "err");
       return;
     }
     routeTrains = Array.isArray(res.trains) ? res.trains : [];

@@ -5,7 +5,22 @@ const MATCH = [
   "https://eticket.railway.gov.bd/*"
 ];
 const HOME = "https://train.shohoz.com/";
-const API = "https://railspaapi.shohoz.com/v1.0/web/bookings/search-trips-v2";
+
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+function searchUrl(from, to, date, seatClass) {
+  const safe = STC.sanitizeConfig({ from, to, date, seatClass, train: "x", seatCount: 1 });
+  const doj = STC.formatDoJ(safe.date);
+  const params = new URLSearchParams({
+    fromcity: safe.from,
+    tocity: safe.to,
+    doj,
+    class: safe.seatClass
+  });
+  return `https://train.shohoz.com/booking/train/search?${params.toString()}`;
+}
 
 async function activeShohozTab() {
   const tabs = await chrome.tabs.query({ url: MATCH });
@@ -14,9 +29,9 @@ async function activeShohozTab() {
   return chrome.tabs.create({ url: HOME, active: true });
 }
 
-async function sendToTab(tabId, message) {
+async function ensureContent(tabId) {
   try {
-    await chrome.tabs.sendMessage(tabId, message);
+    await chrome.tabs.sendMessage(tabId, { type: "STC_PING" });
     return true;
   } catch {
     try {
@@ -28,7 +43,6 @@ async function sendToTab(tabId, message) {
         target: { tabId },
         files: ["overlay.css"]
       });
-      await chrome.tabs.sendMessage(tabId, message);
       return true;
     } catch (err) {
       console.warn("STC inject failed", err);
@@ -37,91 +51,104 @@ async function sendToTab(tabId, message) {
   }
 }
 
-function extractTrainNames(payload) {
-  const trains =
-    payload?.data?.trains ||
-    payload?.trains ||
-    payload?.data?.data?.trains ||
-    [];
-  if (!Array.isArray(trains)) return [];
-  const names = [];
-  for (const t of trains) {
-    const raw =
-      t?.trip_number ||
-      t?.train_name ||
-      t?.trip_name ||
-      t?.name ||
-      (typeof t === "string" ? t : "");
-    const name = STC.cleanText(raw, 80);
-    if (name) names.push(name);
+async function sendToTab(tabId, message) {
+  const ok = await ensureContent(tabId);
+  if (!ok) return null;
+  try {
+    return await chrome.tabs.sendMessage(tabId, message);
+  } catch {
+    return null;
   }
-  return [...new Map(names.map((n) => [n.toLowerCase(), n])).values()].sort((a, b) =>
-    a.localeCompare(b)
-  );
 }
 
-async function scrapeTrainsFromOpenTab(from, to, date, seatClass) {
-  const tabs = await chrome.tabs.query({ url: MATCH });
-  for (const tab of tabs) {
+async function askTabForTrains(tabId, payload) {
+  const injected = await ensureContent(tabId);
+  if (!injected) return null;
+  return sendToTab(tabId, { type: "STC_FETCH_ROUTE_TRAINS", ...payload });
+}
+
+async function waitTabComplete(tabId, timeoutMs = 20000) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
     try {
-      const res = await chrome.tabs.sendMessage(tab.id, {
-        type: "STC_LIST_TRAINS",
-        from,
-        to,
-        date,
-        seatClass
-      });
-      if (res?.ok && Array.isArray(res.trains) && res.trains.length) {
-        return res.trains;
-      }
+      const tab = await chrome.tabs.get(tabId);
+      if (tab.status === "complete") return true;
     } catch {
-      /* tab may not have content script yet */
+      return false;
     }
+    await sleep(250);
   }
-  return [];
+  return false;
 }
 
-async function fetchRouteTrains({ from, to, date, seatClass }) {
-  const safe = STC.sanitizeConfig({ from, to, date, seatClass, seatCount: 1, train: "x" });
+async function fetchRouteTrains(msg) {
+  const safe = STC.sanitizeConfig({
+    from: msg.from,
+    to: msg.to,
+    date: msg.date,
+    seatClass: msg.seatClass,
+    train: "x",
+    seatCount: 1
+  });
   if (!safe.from || !safe.to || !safe.date) {
-    return { ok: false, trains: [], error: "Missing From, To or date" };
+    return { ok: false, trains: [], error: "missing_fields" };
   }
-  const doj = STC.formatDoJ(safe.date);
-  const attempts = [
-    `${API}?${new URLSearchParams({
-      from_city: safe.from,
-      to_city: safe.to,
-      date_of_journey: doj,
-      seat_class: safe.seatClass
-    })}`,
-    `https://railspaapi.shohoz.com/v1.0/app/bookings/search-trips-v2?${new URLSearchParams({
-      from_city: safe.from,
-      to_city: safe.to,
-      date_of_journey: doj,
-      seat_class: safe.seatClass
-    })}`
-  ];
 
-  for (const url of attempts) {
-    try {
-      const res = await fetch(url, {
-        method: "GET",
-        credentials: "omit",
-        cache: "no-store",
-        headers: { Accept: "application/json" }
-      });
-      if (!res.ok) continue;
-      const json = await res.json();
-      const trains = extractTrainNames(json);
-      if (trains.length) return { ok: true, trains };
-    } catch {
-      /* try next */
+  const payload = {
+    from: safe.from,
+    to: safe.to,
+    date: safe.date,
+    seatClass: safe.seatClass
+  };
+
+  // 1) Try any open Shohoz tab with the user's login session
+  const openTabs = await chrome.tabs.query({ url: MATCH });
+  for (const tab of openTabs) {
+    const res = await askTabForTrains(tab.id, payload);
+    if (res?.ok && res.trains?.length) return { ok: true, trains: res.trains };
+    if (res?.error === "not_logged_in") {
+      // keep trying other strategies, but remember
     }
   }
 
-  const scraped = await scrapeTrainsFromOpenTab(safe.from, safe.to, safe.date, safe.seatClass);
-  if (scraped.length) return { ok: true, trains: scraped };
-  return { ok: false, trains: [], error: "No trains" };
+  // 2) Open search in a quiet tab, wait for trains (uses site session + DOM)
+  const url = searchUrl(safe.from, safe.to, safe.date, safe.seatClass);
+  let tempTab = null;
+  try {
+    tempTab = await chrome.tabs.create({ url, active: false });
+    await waitTabComplete(tempTab.id, 25000);
+    await sleep(1200);
+
+    for (let i = 0; i < 20; i++) {
+      const res = await askTabForTrains(tempTab.id, payload);
+      if (res?.ok && res.trains?.length) {
+        return { ok: true, trains: res.trains };
+      }
+      if (res?.error === "not_logged_in" && i > 2) {
+        return { ok: false, trains: [], error: "not_logged_in" };
+      }
+      await sleep(700);
+    }
+  } catch (err) {
+    return { ok: false, trains: [], error: String(err?.message || err) };
+  } finally {
+    if (tempTab?.id) {
+      try {
+        await chrome.tabs.remove(tempTab.id);
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
+  // 3) Last try: existing home tab auth API only
+  if (openTabs[0]) {
+    const res = await askTabForTrains(openTabs[0].id, payload);
+    if (res?.ok && res.trains?.length) return { ok: true, trains: res.trains };
+    if (res?.error) return { ok: false, trains: [], error: res.error };
+  }
+
+  return { ok: false, trains: [], error: "no_trains" };
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
@@ -132,8 +159,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   if (msg?.type === "STC_FETCH_TRAINS") {
     (async () => {
-      const result = await fetchRouteTrains(msg);
-      sendResponse(result);
+      try {
+        sendResponse(await fetchRouteTrains(msg));
+      } catch (err) {
+        sendResponse({ ok: false, trains: [], error: String(err?.message || err) });
+      }
     })();
     return true;
   }
@@ -147,16 +177,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         return;
       }
       const tab = await activeShohozTab();
-      if (tab?.url) {
-        try {
-          const host = new URL(tab.url).hostname;
-          if (tab.url !== "chrome://newtab/" && tab.url !== HOME && !STC.isAllowedHost(host) && !/^https:\/\/(train\.shohoz\.com|eticket\.railway\.gov\.bd)/.test(tab.url)) {
-            // still allow if we just created home tab mid-load
-          }
-        } catch {
-          /* ignore */
-        }
-      }
       await chrome.storage.local.set({ config, botRunning: true, botState: "running" });
       await sendToTab(tab.id, { type: "STC_START", config });
       sendResponse({ ok: true, tabId: tab.id });

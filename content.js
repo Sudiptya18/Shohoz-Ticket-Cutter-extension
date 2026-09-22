@@ -192,6 +192,111 @@
     if (msg) hud.querySelector("#stc-msg").textContent = msg;
   }
 
+  function extractTrainNames(payload) {
+    const trains =
+      payload?.data?.trains ||
+      payload?.trains ||
+      payload?.data?.data?.trains ||
+      [];
+    if (!Array.isArray(trains)) return [];
+    const names = [];
+    for (const t of trains) {
+      const raw =
+        t?.trip_number ||
+        t?.train_name ||
+        t?.trip_name ||
+        t?.name ||
+        (typeof t === "string" ? t : "");
+      const name = STC.cleanText(raw, 80);
+      if (name) names.push(name);
+    }
+    return [...new Map(names.map((n) => [n.toLowerCase(), n])).values()].sort((a, b) =>
+      a.localeCompare(b)
+    );
+  }
+
+  function authHeaders() {
+    let token = localStorage.getItem("token");
+    try {
+      const parsed = JSON.parse(token);
+      if (parsed && typeof parsed === "object") {
+        token = parsed.token || parsed.access_token || parsed.accessToken || token;
+      }
+    } catch {
+      /* plain string token */
+    }
+    if (token && /^Bearer\s+/i.test(token)) token = token.replace(/^Bearer\s+/i, "");
+    const deviceId = localStorage.getItem("uudid");
+    const deviceKey = localStorage.getItem("ssdk");
+    const headers = {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      "X-Requested-With": "XMLHttpRequest"
+    };
+    if (deviceId) headers["X-Device-Id"] = String(deviceId);
+    if (deviceKey) headers["X-Device-Key"] = String(deviceKey);
+    if (token) headers.Authorization = `Bearer ${token}`;
+    return { headers, hasToken: !!token };
+  }
+
+  async function fetchTrainsViaApi(from, to, date, seatClass) {
+    const safe = STC.sanitizeConfig({ from, to, date, seatClass, train: "x", seatCount: 1 });
+    if (!safe.from || !safe.to || !safe.date) {
+      return { ok: false, trains: [], error: "missing_fields" };
+    }
+    const { headers, hasToken } = authHeaders();
+    if (!hasToken) return { ok: false, trains: [], error: "not_logged_in" };
+
+    const doj = formatDoJ(safe.date);
+    const qs = new URLSearchParams({
+      from_city: safe.from,
+      to_city: safe.to,
+      date_of_journey: doj,
+      seat_class: safe.seatClass
+    }).toString();
+    const urls = [
+      `https://railspaapi.shohoz.com/v1.0/web/bookings/search-trips-v2?${qs}`,
+      `https://railspaapi.shohoz.com/v1.0/app/bookings/search-trips-v2?${qs}`
+    ];
+
+    for (const url of urls) {
+      try {
+        const res = await fetch(url, {
+          method: "GET",
+          headers,
+          credentials: "omit",
+          cache: "no-store"
+        });
+        if (!res.ok) continue;
+        const json = await res.json();
+        const trains = extractTrainNames(json);
+        if (trains.length) {
+          await chrome.storage.local.set({ routeTrains: trains });
+          return { ok: true, trains };
+        }
+      } catch {
+        /* try next */
+      }
+    }
+    return { ok: false, trains: [], error: "api_failed" };
+  }
+
+  async function resolveRouteTrains(req) {
+    const api = await fetchTrainsViaApi(req.from, req.to, req.date, req.seatClass);
+    if (api.ok && api.trains.length) return api;
+
+    const dom = scrapeSyncTrainNames();
+    if (dom.length) {
+      await chrome.storage.local.set({ routeTrains: dom });
+      return { ok: true, trains: dom };
+    }
+
+    const scraped = await scrapeTrainsFromPage();
+    if (scraped.length) return { ok: true, trains: scraped };
+
+    return api.error ? api : { ok: false, trains: [], error: "no_trains" };
+  }
+
   async function scrapeTrainsFromPage() {
     const names = qsa("app-single-trip .trip-name h2, app-single-trip h2, .trip-name h2")
       .map(textOf)
@@ -746,11 +851,18 @@
       sendResponse({ ok: false });
       return false;
     }
-    if (msg?.type === "STC_LIST_TRAINS") {
+    if (msg?.type === "STC_PING") {
+      sendResponse({ ok: true });
+      return false;
+    }
+    if (msg?.type === "STC_FETCH_ROUTE_TRAINS" || msg?.type === "STC_LIST_TRAINS") {
       (async () => {
-        const trains = listTrainsForRoute(msg);
-        if (!trains.length) await scrapeTrainsFromPage();
-        sendResponse({ ok: true, trains: trains.length ? trains : scrapeSyncTrainNames() });
+        try {
+          const result = await resolveRouteTrains(msg);
+          sendResponse(result);
+        } catch (err) {
+          sendResponse({ ok: false, trains: [], error: String(err?.message || err) });
+        }
       })();
       return true;
     }
