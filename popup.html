@@ -13,7 +13,7 @@
     </div>
     <div class="hero-text">
       <h1>Shohoz Ticket Cutter</h1>
-      <p>Same-side seats · one coach</p>
+      <p id="heroTag">Same-side seats · one coach</p>
     </div>
     <span id="runPill" class="pill idle">Idle</span>
   </header>
@@ -87,6 +87,11 @@
         <input id="preferMiddle" type="checkbox" checked />
         <span>Prefer middle bogie seats</span>
       </label>
+      <label class="check">
+        <input id="randomSeats" type="checkbox" />
+        <span>Random seat selection</span>
+      </label>
+      <p id="seatModeNote" class="check-note">Seats stay side by side in one coach.</p>
       <label class="check">
         <input id="retry" type="checkbox" checked />
         <span>Keep retrying until seats appear</span>

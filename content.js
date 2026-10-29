@@ -177,7 +177,7 @@
     if (running) {
       hud.className = "";
       hud.querySelector("#stc-h-state").textContent = "Running";
-      hud.querySelector("#stc-step").textContent = "Cutting seats";
+      hud.querySelector("#stc-step").textContent = config?.randomSeats ? "Random seats" : "Side-by-side seats";
     } else if (state === "done") {
       hud.className = "stc-done";
       hud.querySelector("#stc-h-state").textContent = "Done";
@@ -492,16 +492,30 @@
     return cands;
   }
 
-  async function selectCoach(preferred) {
-    const sel = qs("#select-bogie");
-    if (!sel || !sel.options.length) return [0];
-    const options = [...sel.options];
-    let order = options.map((_, i) => i);
-    if (preferred) {
-      const hit = options.findIndex((o) => o.textContent.toLowerCase().includes(preferred.toLowerCase()));
-      if (hit >= 0) order = [hit, ...order.filter((i) => i !== hit)];
+  function shuffleInPlace(list) {
+    for (let i = list.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = list[i];
+      list[i] = list[j];
+      list[j] = tmp;
     }
-    return order;
+    return list;
+  }
+
+  function coachIndices(preferred) {
+    const sel = qs("#select-bogie");
+    if (!sel || !sel.options.length) return { order: [0], pinned: false };
+    const options = [...sel.options];
+    const order = options.map((_, i) => i);
+    const name = String(preferred || "").trim().toLowerCase();
+    if (!name) return { order, pinned: false };
+    const hit = options.findIndex((o) => o.textContent.toLowerCase().includes(name));
+    if (hit < 0) return { order, pinned: false };
+    return { order: [hit, ...order.filter((i) => i !== hit)], pinned: true };
+  }
+
+  async function selectCoach(preferred) {
+    return coachIndices(preferred).order;
   }
 
   function currentCoachName() {
@@ -668,7 +682,135 @@
     return false;
   }
 
+  function orderedRandomLabels(preferMiddle) {
+    const layout = qs(".seat_layout") || qs("app-seat-layout") || document;
+    const rows = qsa(".seat-row", layout);
+    const rowCount = rows.length;
+    const mid = (rowCount - 1) / 2;
+    const seen = new Set();
+    const pool = [];
+    for (const btn of availableSeats(layout)) {
+      const label = seatLabel(btn);
+      if (!label || seen.has(label)) continue;
+      seen.add(label);
+      const rowEl = btn.closest(".seat-row");
+      const row = rowEl ? rows.indexOf(rowEl) : -1;
+      const dist = row < 0 || rowCount < 2 ? Number.POSITIVE_INFINITY : Math.abs(row - mid);
+      pool.push({ label, dist });
+    }
+
+    if (!preferMiddle || rowCount < 2) return shuffleInPlace(pool).map((seat) => seat.label);
+
+    const band = Math.max(1, rowCount / 4);
+    const middle = shuffleInPlace(pool.filter((seat) => seat.dist <= band));
+    const outer = shuffleInPlace(pool.filter((seat) => seat.dist > band));
+    return [...middle, ...outer].map((seat) => seat.label);
+  }
+
+  async function takeRandomSeats(cfg, need) {
+    const held = new Set(cartSeatLabels());
+    const pool = orderedRandomLabels(cfg.preferMiddle !== false).filter((label) => !held.has(label));
+    const taken = [];
+    for (const label of pool) {
+      if (!running || taken.length >= need) break;
+      if (cartSeatLabels().length >= cfg.seatCount) break;
+      const selected = await selectSeatByLabel(label);
+      if (!selected) {
+        await log(`${label} did not lock`);
+        continue;
+      }
+      taken.push(label);
+      await sleep(220);
+    }
+    return taken;
+  }
+
+  function randomVisitOrder(indices, pinned) {
+    if (indices.length <= 1) return indices.slice();
+    if (pinned) return [indices[0], ...shuffleInPlace(indices.slice(1))];
+    return shuffleInPlace(indices.slice());
+  }
+
+  async function cutSeatsRandom(cfg) {
+    const { order, pinned } = coachIndices(cfg.coach);
+    const visit = randomVisitOrder(order, pinned);
+    await clearSelectionsAcrossCoaches(visit);
+
+    for (const i of visit) {
+      if (!running) return false;
+      await setCoachIndex(i);
+      await deselectAllInView();
+      const coachName = currentCoachName();
+      const free = availableSeats().length;
+      if (free < cfg.seatCount) {
+        await log(`${coachName}: ${free} free · need ${cfg.seatCount} in one coach`);
+        continue;
+      }
+      const bias = cfg.preferMiddle === false ? "any free seat" : "middle seats first";
+      await log(`${coachName}: ${free} free · random · ${bias}`);
+      await takeRandomSeats(cfg, cfg.seatCount);
+      const cart = cartSeatLabels();
+      if (cart.length >= cfg.seatCount && sameCoachLabels(cart.slice(0, cfg.seatCount))) {
+        await log(`Locked ${cart.slice(0, cfg.seatCount).join(", ")} in ${coachName}`);
+        return true;
+      }
+      await log(`${coachName}: could not lock ${cfg.seatCount} seats`);
+      await deselectAllInView();
+      if (cartSeatLabels().length) await clearSelectionsAcrossCoaches(visit);
+    }
+
+    await log("No single coach has enough free seats — spreading across coaches");
+    if (cartSeatLabels().length) await clearSelectionsAcrossCoaches(visit);
+
+    for (const i of visit) {
+      if (!running) return false;
+      if (cartSeatLabels().length >= cfg.seatCount) break;
+      await setCoachIndex(i);
+      const coachName = currentCoachName();
+      const free = availableSeats().length;
+      if (!free) {
+        await log(`${coachName}: no free seats`);
+        continue;
+      }
+      await log(`${coachName}: ${free} free · taking 1`);
+      const taken = await takeRandomSeats(cfg, 1);
+      if (taken.length) await log(`${coachName}: locked ${taken.join(", ")}`);
+    }
+
+    for (const i of visit) {
+      if (!running) return false;
+      if (cartSeatLabels().length >= cfg.seatCount) break;
+      await setCoachIndex(i);
+      const coachName = currentCoachName();
+      const need = cfg.seatCount - cartSeatLabels().length;
+      const free = availableSeats().length;
+      if (!free || need <= 0) continue;
+      await log(`${coachName}: ${free} free · taking up to ${need} more`);
+      const taken = await takeRandomSeats(cfg, need);
+      if (taken.length) await log(`${coachName}: locked ${taken.join(", ")}`);
+    }
+
+    const cart = cartSeatLabels();
+    if (cart.length >= cfg.seatCount) {
+      const chosen = cart.slice(0, cfg.seatCount);
+      const coaches = new Set(chosen.map((label) => label.split("-")[0]).filter(Boolean));
+      await log(`Locked ${chosen.join(", ")} · ${coaches.size} coach(es)`);
+      return true;
+    }
+
+    await log(`Random mode found ${cart.length} of ${cfg.seatCount} seats`);
+    await clearSelectionsAcrossCoaches(visit);
+    return false;
+  }
+
+  function selectionComplete(cfg, cart) {
+    if (cart.length < cfg.seatCount) return false;
+    if (cfg.randomSeats) return true;
+    return sameCoachLabels(cart.slice(0, cfg.seatCount));
+  }
+
   async function cutSeats(cfg) {
+    if (cfg.randomSeats) return cutSeatsRandom(cfg);
     const indices = await selectCoach(cfg.coach);
     await clearSelectionsAcrossCoaches(indices);
 
@@ -757,7 +899,7 @@
         return "ok";
       }
       const cart = cartSeatLabels();
-      const complete = cart.length >= cfg.seatCount && sameCoachLabels(cart.slice(0, cfg.seatCount));
+      const complete = selectionComplete(cfg, cart);
       if (!complete) {
         const ok = await cutSeats(cfg);
         if (!ok) return "retry";
@@ -797,7 +939,9 @@
     ensureHud();
     updateHud("Bot started");
     purchaseClicked = false;
-    await log("Bot started — same coach, side by side");
+    await log(cfg.randomSeats
+      ? "Bot started — random seats for the count you set"
+      : "Bot started — same coach, side by side");
 
     while (running) {
       try {

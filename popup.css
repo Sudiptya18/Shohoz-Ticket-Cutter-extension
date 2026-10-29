@@ -207,6 +207,12 @@ input:focus, select:focus {
   color: var(--ink);
 }
 .check input { accent-color: var(--green); }
+.check-note {
+  margin: 4px 0 0 22px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--muted);
+}
 
 .hint-inline {
   font-style: normal;

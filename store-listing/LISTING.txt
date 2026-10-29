@@ -12,18 +12,20 @@ Title from package
   (comes from manifest.json — do not duplicate it in Description)
 
 Summary from package  (keep this in manifest.json, max ~132 characters)
-  Select From, To, date, class and train, then cut same-side seats on train.shohoz.com until OTP.
+  Select From, To, date, class and train, then cut side-by-side or random seats on train.shohoz.com until OTP.
 
 Description *   (paste into the Description box)
 
 Shohoz Ticket Cutter helps you book Bangladesh Railway e-tickets on train.shohoz.com without hunting through the seat map by hand.
 
-Set From, To, Date of Journey, Class, Train and how many seats you need (1–4). Press Start cutter. The extension searches, opens your train, and selects seats that sit together on the same side of the aisle in the same coach. When the OTP page appears, the bot stops so you can enter the code and pay yourself.
+Set From, To, Date of Journey, Class, Train and how many seats you need (1–4). Press Start cutter. The extension searches, opens your train, and selects seats. By default those seats sit together on the same side of the aisle in the same coach. Turn on Random seat selection when you want any free seats for that count — including a four-berth cabin that is not a side-by-side block, or seats spread across coaches when no single coach has enough. When the OTP page appears, the bot stops so you can enter the code and pay yourself.
 
 WHY INSTALL
 • Adjacent seats for family or friends — not scattered across the aisle or across coaches
+• Optional random seats: any free seats for the count you set, not only side by side
+• If one coach cannot cover that count, random mode combines coaches
 • Middle-of-coach seats when a bogie still has plenty of space
-• If a coach is filling up, it takes any side-by-side block and only uses the last rows as a last resort
+• If a coach is filling up, side-by-side mode takes any same-side block and only uses the last rows as a last resort
 • Optional preferred coach (for example KHA or GHA)
 • Optional retry until seats appear
 • Live status in the popup and on the page
@@ -37,9 +39,16 @@ HOW TO USE
 6. When OTP appears, the job is done — enter OTP and complete payment.
 
 SEAT RULES
+Side by side (default)
 • 2 seats: a same-row pair such as GHA-33 and GHA-34
 • 4 seats: two consecutive rows on one side, such as 29, 30, 33, 34 or 31, 32, 35, 36
-• Seats always stay in one coach
+• Seats stay in one coach
+
+Random seat selection
+• Books the seat count you set (1–4) from any free seats
+• Seats do not have to be side by side
+• Uses one coach when that coach has enough free seats
+• Otherwise spreads them across coaches, then fills any seats still missing
 • You still confirm purchase and enter OTP yourself
 
 NOTES
@@ -100,13 +109,13 @@ PRIVACY  (next left-menu item — fill honestly)
 ════════════════════════════════════════
 
 Single purpose
-  Helps the user search trains and select adjacent seats on Bangladesh Railway e-ticketing (train.shohoz.com), then stops at the OTP page.
+  Helps the user search trains and select side-by-side or random seats on Bangladesh Railway e-ticketing (train.shohoz.com), then stops at the OTP page.
 
 Does this extension collect or use user data?
   Yes — only on the device.
 
 Data used
-  • Trip preferences you type (From, To, date, class, train, seat count, coach)
+  • Trip preferences you type (From, To, date, class, train, seat count, coach, seat mode)
   • Live status logs while the cutter is running
   Stored with chrome.storage on your computer. Not sent to the developer. Not sold. No analytics.
 

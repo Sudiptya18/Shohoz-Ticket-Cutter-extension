@@ -43,7 +43,8 @@
       coach: cleanText(cfg.coach, 20).replace(/[^A-Za-z0-9\s\-]/g, ""),
       seatCount,
       retry: cfg.retry !== false,
-      preferMiddle: cfg.preferMiddle !== false
+      preferMiddle: cfg.preferMiddle !== false,
+      randomSeats: cfg.randomSeats === true
     };
   }
 

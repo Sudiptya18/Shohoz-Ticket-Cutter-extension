@@ -6,6 +6,9 @@ const trainEl = document.getElementById("train");
 const coachEl = document.getElementById("coach");
 const retryEl = document.getElementById("retry");
 const preferMiddleEl = document.getElementById("preferMiddle");
+const randomSeatsEl = document.getElementById("randomSeats");
+const heroTag = document.getElementById("heroTag");
+const seatModeNote = document.getElementById("seatModeNote");
 const seatCountEl = document.getElementById("seatCount");
 const startBtn = document.getElementById("startBtn");
 const stopBtn = document.getElementById("stopBtn");
@@ -197,6 +200,16 @@ function renderLogs(logs) {
   logEl.scrollTop = logEl.scrollHeight;
 }
 
+function updateSeatModeNote() {
+  const random = !!randomSeatsEl.checked;
+  if (heroTag) heroTag.textContent = random ? "Random seats · any coach" : "Same-side seats · one coach";
+  if (seatModeNote) {
+    seatModeNote.textContent = random
+      ? "Takes the seat count you set from any free seats, not side by side. One coach when it has enough; otherwise spreads them across coaches."
+      : "Seats stay side by side in one coach.";
+  }
+}
+
 function collectConfig() {
   return STC.sanitizeConfig({
     from: fromEl.value,
@@ -207,7 +220,8 @@ function collectConfig() {
     coach: coachEl.value,
     seatCount,
     retry: retryEl.checked,
-    preferMiddle: preferMiddleEl.checked
+    preferMiddle: preferMiddleEl.checked,
+    randomSeats: randomSeatsEl.checked
   });
 }
 
@@ -223,6 +237,8 @@ function applyConfig(cfg) {
   seatCountEl.textContent = String(seatCount);
   retryEl.checked = safe.retry;
   preferMiddleEl.checked = safe.preferMiddle;
+  randomSeatsEl.checked = safe.randomSeats;
+  updateSeatModeNote();
 }
 
 async function persist() {
@@ -289,9 +305,10 @@ async function refreshRouteTrains(force) {
   }
 }
 
-["from", "to", "date", "seatClass", "train", "coach", "retry", "preferMiddle"].forEach((id) => {
+["from", "to", "date", "seatClass", "train", "coach", "retry", "preferMiddle", "randomSeats"].forEach((id) => {
   const el = document.getElementById(id);
   el.addEventListener("change", () => {
+    if (id === "randomSeats") updateSeatModeNote();
     persist();
     if (id === "from" || id === "to" || id === "date" || id === "seatClass") scheduleTrainRefresh();
   });
@@ -308,7 +325,9 @@ clearBtn.addEventListener("click", async () => {
   seatCount = 2;
   seatCountEl.textContent = "2";
   preferMiddleEl.checked = true;
+  randomSeatsEl.checked = false;
   retryEl.checked = true;
+  updateSeatModeNote();
   routeTrains = [];
   routeKey = "";
   updateTrainHint("need");
